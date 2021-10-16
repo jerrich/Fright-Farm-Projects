@@ -1,0 +1,327 @@
+/**
+  * This sketch demonstrates how to use the BeatDetect object in FREQ_ENERGY mode.<br />
+  * You can use <code>isKick</code>, <code>isSnare</code>, </code>isHat</code>, <code>isRange</code>,
+  * and <code>isOnset(int)</code> to track whatever kind of beats you are looking to track, they will report
+  * true or false based on the state of the analysis. To "tick" the analysis you must call <code>detect</code>
+  * with successive buffers of audio. You can do this inside of <code>draw</code>, but you are likely to miss some
+  * audio buffers if you do this. The sketch implements an <code>AudioListener</code> called <code>BeatListener</code>
+  * so that it can call <code>detect</code> on every buffer of audio processed by the system without repeating a buffer
+  * or missing one.
+  * <p>
+  * This sketch plays an entire song so it may be a little slow to load.
+  */
+//Jeremy Rich updated on September 24, 2021
+
+import processing.serial.*;
+import ddf.minim.*;
+import ddf.minim.analysis.*;
+import cc.arduino.*;
+
+Minim minim;
+AudioPlayer song;
+BeatDetect beat;
+BeatListener bl;
+Arduino arduino;
+
+int pin2 =  2;    // LED
+int pin3 =  3;    // LED
+int pin4 =  4;    // LED
+int pin5 = 5;     // LED
+int pin6 = 6;     // LED
+int pin7 = 7;     // LED
+int pin8 = 8;     // LED
+int pin9 = 9;     // LED
+int pin10 = 10;   // heat
+int pin11 = 11;   // heat
+int pin12 = 12;   // button/trip
+
+int turnOnThreshold = 30;                                                                         //****parameter to determine speed of blinking/firing: higher means slower****
+int turnOffThreshold = turnOnThreshold * (4/3);
+
+int waitCounter2 = turnOnThreshold;
+int waitCounter3 = turnOnThreshold;
+int waitCounter4 = turnOnThreshold;
+int waitCounter5 = turnOnThreshold;
+int waitCounter6 = turnOnThreshold;
+int waitCounter7 = turnOnThreshold;
+int waitCounter8 = turnOnThreshold;
+int waitCounter9 = turnOnThreshold;
+
+boolean songStart = true;
+
+boolean state2 = false;
+boolean state3 = false;
+boolean state4 = false;
+boolean state5 = false;
+boolean state6 = false;
+boolean state7 = false;
+boolean state8 = false;
+boolean state9 = false;
+
+float kickSize, snareSize, hatSize, onsetSize;
+
+int lastButtonState = Arduino.HIGH;
+int buttonState = Arduino.HIGH;
+long lastDebounceTime = 0;
+long debounceDelay = 50;
+
+void setup() {
+  size(512, 200, P3D);
+ 
+  minim = new Minim(this);
+  arduino = new Arduino(this, Arduino.list()[1], 57600);
+ 
+  song = minim.loadFile("Fire.mp3", 2048);                                                        //****parameter to enter song file****
+ 
+  // a beat detection object that is FREQ_ENERGY mode that
+  // expects buffers the length of song's buffer size
+  // and samples captured at songs's sample rate
+  beat = new BeatDetect(song.bufferSize(), song.sampleRate());
+  // set the sensitivity to 300 milliseconds
+  // After a beat has been detected, the algorithm will wait for 300 milliseconds
+  // before allowing another beat to be reported. You can use this to dampen the
+  // algorithm if it is giving too many false-positives. The default value is 10,
+  // which is essentially no damping. If you try to set the sensitivity to a negative value,
+  // an error will be reported and it will be set to 10 instead.
+  beat.setSensitivity(40);                                                                        //****parameter to determine sensitivity****
+  kickSize = snareSize = hatSize = onsetSize = 16;
+  // make a new beat listener, so that we won't miss any buffers for the analysis
+  bl = new BeatListener(beat, song);  
+  textFont(createFont("Helvetica", 16));
+  textAlign(CENTER);
+ 
+  arduino.pinMode(pin2, Arduino.OUTPUT);
+  arduino.pinMode(pin3, Arduino.OUTPUT);
+  arduino.pinMode(pin4, Arduino.OUTPUT);
+  arduino.pinMode(pin5, Arduino.OUTPUT);
+  arduino.pinMode(pin6, Arduino.OUTPUT);
+  arduino.pinMode(pin7, Arduino.OUTPUT);
+  arduino.pinMode(pin8, Arduino.OUTPUT);
+  arduino.pinMode(pin9, Arduino.OUTPUT);
+  arduino.pinMode(pin10, Arduino.OUTPUT);
+  arduino.pinMode(pin11, Arduino.OUTPUT);
+  arduino.pinMode(pin12, Arduino.INPUT_PULLUP);
+ 
+  arduino.digitalWrite(pin2, Arduino.LOW);
+  arduino.digitalWrite(pin3, Arduino.LOW);
+  arduino.digitalWrite(pin4, Arduino.LOW);
+  arduino.digitalWrite(pin5, Arduino.LOW);
+  arduino.digitalWrite(pin6, Arduino.LOW);
+  arduino.digitalWrite(pin7, Arduino.LOW);
+  arduino.digitalWrite(pin8, Arduino.LOW);
+  arduino.digitalWrite(pin9, Arduino.LOW);
+  arduino.digitalWrite(pin10, Arduino.LOW);
+  arduino.digitalWrite(pin11, Arduino.LOW);
+}
+
+void draw() {
+  if(songStart) {
+    int reading = arduino.digitalRead(pin12);
+    if (reading != lastButtonState) {
+      lastDebounceTime = millis();
+    }
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+      if (reading != buttonState) {
+        buttonState = reading;
+        if (buttonState == Arduino.LOW) {
+          long secondsToSleep1 = 4;                                                               //****parameter to determine seconds of wait time before heat or song****
+          long waitStart1 = millis();
+          while(millis() - waitStart1 < secondsToSleep1 * 1000) {
+           
+          }
+         
+          arduino.digitalWrite(pin10, Arduino.HIGH);
+          arduino.digitalWrite(pin11, Arduino.HIGH);
+         
+          long secondsToSleep2 = 6;                                                               //****parameter to determine seconds of wait time between heat and song****
+          long waitStart2 = millis();
+          while(millis() - waitStart2 < secondsToSleep2 * 1000) {
+           
+          }
+   
+          song.play();
+          songStart = false;
+        }
+      }
+    }
+    lastButtonState = reading;
+  }
+ 
+  else if(!songStart && song.isPlaying()) {
+    background(0);
+    fill(255);
+   
+    if(beat.isKick()) {
+      if(waitCounter2 >= turnOnThreshold && !state2) {
+        arduino.digitalWrite(pin2, Arduino.HIGH);   // set the LED on
+        waitCounter2 = 0;
+        state2 = true;
+        kickSize = 32;
+      }
+      if(waitCounter6 >= turnOnThreshold && !state6) {
+        arduino.digitalWrite(pin6, Arduino.HIGH);   // set the LED on
+        waitCounter6 = 0;
+        state6 = true;
+        kickSize = 32;
+      }
+    }
+    if(beat.isSnare()) {
+      if(waitCounter3 >= turnOnThreshold && !state3) {
+        arduino.digitalWrite(pin3, Arduino.HIGH);   // set the LED on
+        waitCounter3 = 0;
+        state3 = true;
+        snareSize = 32;
+      }
+      if(waitCounter7 >= turnOnThreshold && !state7) {
+        arduino.digitalWrite(pin7, Arduino.HIGH);   // set the LED on
+        waitCounter7 = 0;
+        state7 = true;
+        snareSize = 32;
+      }
+    }
+    if(beat.isHat()) {
+      if(waitCounter4 >= turnOnThreshold && !state4) {
+        arduino.digitalWrite(pin4, Arduino.HIGH);   // set the LED on
+        waitCounter4 = 0;
+        state4 = true;
+        hatSize = 32;
+      }
+      if(waitCounter8 >= turnOnThreshold && !state8) {
+        arduino.digitalWrite(pin8, Arduino.HIGH);   // set the LED on
+        waitCounter8 = 0;
+        state8 = true;
+        hatSize = 32;
+      }
+    }
+    if(beat.isOnset(2)) {
+      if(waitCounter5 >= turnOnThreshold  && !state5) {
+        arduino.digitalWrite(pin5, Arduino.HIGH);   // set the LED on
+        waitCounter5 = 0;
+        state5 = true;
+        onsetSize = 32;
+      }
+      if(waitCounter9 >= turnOnThreshold && !state9) {
+        arduino.digitalWrite(pin9, Arduino.HIGH);   // set the LED on
+        waitCounter9 = 0;
+        state9 = true;
+        onsetSize = 32;
+      }
+    }
+   
+    if(waitCounter2 >= turnOffThreshold && state2) {
+      arduino.digitalWrite(pin2, Arduino.LOW);    // set the LED off
+      waitCounter2 = 0;
+      state2 = false;
+      kickSize = 16;
+    }
+    if(waitCounter3 >= turnOffThreshold && state3) {
+      arduino.digitalWrite(pin3, Arduino.LOW);    // set the LED off
+      waitCounter3 = 0;
+      state3 = false;
+      snareSize = 16;
+    }
+    if(waitCounter4 >= turnOffThreshold && state4) {
+      arduino.digitalWrite(pin4, Arduino.LOW);    // set the LED off
+      waitCounter4 = 0;
+      state4 = false;
+      hatSize = 16;
+    }
+    if(waitCounter5 >= turnOffThreshold && state5) {
+      arduino.digitalWrite(pin5, Arduino.LOW);    // set the LED off
+      waitCounter5 = 0;
+      state5 = false;
+      onsetSize = 16;
+    }
+    if(waitCounter6 >= turnOffThreshold && state6) {
+      arduino.digitalWrite(pin6, Arduino.LOW);    // set the LED off
+      waitCounter6 = 0;
+      state6 = false;
+      kickSize = 16;
+    }
+    if(waitCounter7 >= turnOffThreshold && state7) {
+      arduino.digitalWrite(pin7, Arduino.LOW);    // set the LED off
+      waitCounter7 = 0;
+      state7 = false;
+      snareSize = 16;
+    }
+    if(waitCounter8 >= turnOffThreshold && state8) {
+      arduino.digitalWrite(pin8, Arduino.LOW);    // set the LED off
+      waitCounter8 = 0;
+      state8 = false;
+      hatSize = 16;
+    }
+    if(waitCounter9 >= turnOffThreshold && state9) {
+      arduino.digitalWrite(pin9, Arduino.LOW);    // set the LED off
+      waitCounter9 = 0;
+      state9 = false;
+      onsetSize = 16;
+    }
+   
+    textSize(kickSize);
+    text("KICK", width/5, height/2);
+    textSize(snareSize);
+    text("SNARE", 2*width/5, height/2);
+    textSize(hatSize);
+    text("HAT", 3*width/5, height/2);
+    textSize(onsetSize);
+    text("ONSET", 4*width/5, height/2);
+   
+    waitCounter2 ++;
+    waitCounter3 ++;
+    waitCounter4 ++;
+    waitCounter5 ++;
+    waitCounter6 ++;
+    waitCounter7 ++;
+    waitCounter8 ++;
+    waitCounter9 ++;
+  }
+ 
+  else if(!songStart && !song.isPlaying()) {
+    arduino.digitalWrite(pin2, Arduino.LOW);
+    arduino.digitalWrite(pin3, Arduino.LOW);
+    arduino.digitalWrite(pin4, Arduino.LOW);
+    arduino.digitalWrite(pin5, Arduino.LOW);
+    arduino.digitalWrite(pin6, Arduino.LOW);
+    arduino.digitalWrite(pin7, Arduino.LOW);
+    arduino.digitalWrite(pin8, Arduino.LOW);
+    arduino.digitalWrite(pin9, Arduino.LOW);
+    arduino.digitalWrite(pin10, Arduino.LOW);
+    arduino.digitalWrite(pin11, Arduino.LOW);
+   
+    song.rewind();
+    songStart = true;
+   
+    waitCounter2 = turnOnThreshold;
+    waitCounter3 = turnOnThreshold;
+    waitCounter4 = turnOnThreshold;
+    waitCounter5 = turnOnThreshold;
+    waitCounter6 = turnOnThreshold;
+    waitCounter7 = turnOnThreshold;
+    waitCounter8 = turnOnThreshold;
+    waitCounter9 = turnOnThreshold;
+   
+    state2 = false;
+    state3 = false;
+    state4 = false;
+    state5 = false;
+    state6 = false;
+    state7 = false;
+    state8 = false;
+    state9 = false;
+   
+    long secondsToSleep3 = 20;
+    long waitStart3 = millis();
+    while(millis() - waitStart3 < secondsToSleep3 * 1000) {
+     
+    }
+  }
+}
+ 
+void stop() {
+  // always close Minim audio classes when you are finished with them
+  song.close();
+  // always stop Minim before exiting
+  minim.stop();
+  // this closes the sketch
+  super.stop();
+}
