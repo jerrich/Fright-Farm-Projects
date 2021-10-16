@@ -1,0 +1,110 @@
+//updated by Jeremy Rich on September 12, 2021
+ 
+#include <IRremote.h>
+ 
+//pin 20: power
+//pin 43: remote control
+//pin map:
+//       27            49
+//   31      38    22      50
+//       42            24
+//   37      51    48      26
+//       39            46
+ 
+int IRPIN = 43;
+ 
+int ledPin27 = 27;
+int ledPin31 = 31;
+int ledPin38 = 38;
+int ledPin42 = 42;
+int ledPin37 = 37;
+int ledPin51 = 51;
+int ledPin39 = 39;
+ 
+int ledPin49 = 49;
+int ledPin22 = 22;
+int ledPin50 = 50;
+int ledPin24 = 24;
+int ledPin48 = 48;
+int ledPin26 = 26;
+int ledPin46 = 46;
+ 
+int ticketCounter = 0;
+ 
+int index[10][7] = { {LOW, LOW, LOW, HIGH, LOW, LOW, LOW},      //0
+                     {HIGH, HIGH, LOW, HIGH, HIGH, LOW, HIGH},  //1
+                     {LOW, HIGH, LOW, LOW, LOW, HIGH, LOW},     //2
+                     {LOW, HIGH, LOW, LOW, HIGH, LOW, LOW},     //3
+                     {HIGH, LOW, LOW, LOW, HIGH, LOW, HIGH},    //4
+                     {LOW, LOW, HIGH, LOW, HIGH, LOW, LOW},     //5
+                     {LOW, LOW, HIGH, LOW, LOW, LOW, LOW},      //6
+                     {LOW, HIGH, LOW, HIGH, HIGH, LOW, HIGH},   //7
+                     {LOW, LOW, LOW, LOW, LOW, LOW, LOW},       //8
+                     {LOW, LOW, LOW, LOW, HIGH, LOW, HIGH} };   //9
+ 
+void displayNum(int num) {
+  int firstDigit = num / 10;
+  int secondDigit = num % 10;
+ 
+  digitalWrite(ledPin27, index[firstDigit][0]);
+  digitalWrite(ledPin31, index[firstDigit][1]);
+  digitalWrite(ledPin38, index[firstDigit][2]);
+  digitalWrite(ledPin42, index[firstDigit][3]);
+  digitalWrite(ledPin37, index[firstDigit][4]);
+  digitalWrite(ledPin51, index[firstDigit][5]);
+  digitalWrite(ledPin39, index[firstDigit][6]);
+  
+  digitalWrite(ledPin49, index[secondDigit][0]);
+  digitalWrite(ledPin22, index[secondDigit][1]);
+  digitalWrite(ledPin50, index[secondDigit][2]);
+  digitalWrite(ledPin24, index[secondDigit][3]);
+  digitalWrite(ledPin48, index[secondDigit][4]);
+  digitalWrite(ledPin26, index[secondDigit][5]);
+  digitalWrite(ledPin46, index[secondDigit][6]);
+}
+ 
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  Serial.println("Enabling IRin");
+  IrReceiver.begin(IRPIN, ENABLE_LED_FEEDBACK);
+  Serial.println("Enabled IRin");
+ 
+  pinMode(ledPin27, OUTPUT);
+  pinMode(ledPin31, OUTPUT);
+  pinMode(ledPin38, OUTPUT);
+  pinMode(ledPin42, OUTPUT);
+  pinMode(ledPin37, OUTPUT);
+  pinMode(ledPin51, OUTPUT);
+  pinMode(ledPin39, OUTPUT);
+ 
+  pinMode(ledPin49, OUTPUT);
+  pinMode(ledPin22, OUTPUT);
+  pinMode(ledPin50, OUTPUT);
+  pinMode(ledPin24, OUTPUT);
+  pinMode(ledPin48, OUTPUT);
+  pinMode(ledPin26, OUTPUT);
+  pinMode(ledPin46, OUTPUT);
+ 
+  displayNum(0);
+}
+ 
+void loop() {
+  // put your main code here, to run repeatedly:
+  if (IrReceiver.decode()) {
+    //Serial.println(IrReceiver.decodedIRData.decodedRawData, HEX);
+    int input = (IrReceiver.decodedIRData.decodedRawData % 1000);
+    if (input == 680) {
+      ticketCounter ++;
+    }
+    else if (input == 240) {
+      ticketCounter --;
+    }
+    ticketCounter = (ticketCounter + 100) % 100;
+    //Serial.println(ticketCounter);
+    displayNum(ticketCounter);
+    IrReceiver.resume();
+  }
+  //delay(500);
+ 
+}
