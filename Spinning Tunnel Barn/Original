@@ -1,0 +1,68 @@
+/// new pop scare
+//Jeremy Rich updated on September 25, 2021
+
+const int buttonPin = 11;
+
+/// mp3 trial
+#include <SoftwareSerial.h>
+#define ARDUINO_RX 0
+#define ARDUINO_TX 1
+SoftwareSerial mySerial(ARDUINO_RX, ARDUINO_TX);
+static int8_t Send_buf[8] = {0} ;
+#define CMD_PLAY_WITHVOLUME 0X22
+#define STOP_PLAY 0X16
+#define CMD_SEL_DEV 0X09
+#define DEV_TF 0X02
+
+int lastButtonState = HIGH;
+int buttonState = HIGH;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+
+void setup() {
+  pinMode(buttonPin, INPUT_PULLUP);
+ 
+  ///mp3 trial
+  mySerial.begin(9600);
+  delay(500);
+  sendCommand(CMD_SEL_DEV, DEV_TF);
+  delay(200);
+
+}
+ 
+void loop() {
+  int reading = digitalRead(buttonPin);
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW) {
+        delay(5000);
+        sendCommand(CMD_PLAY_WITHVOLUME, 0X1E01);
+        delay(60000);
+      }
+    }
+  }
+  lastButtonState = reading;
+}
+
+/// mp3 trial
+void sendCommand(int8_t command, int16_t dat) {
+  delay(20);
+  Send_buf[0] = 0x7e;
+  Send_buf[1] = 0xff;
+  Send_buf[2] = 0x06;
+  Send_buf[3] = command;
+  Send_buf[4] = 0x00;
+  Send_buf[5] = (int8_t)(dat >> 8);
+  Send_buf[6] = (int8_t)(dat);
+  Send_buf[7] = 0xef;
+ 
+  for(uint8_t i=0; i<8; i++) {
+    mySerial.write(Send_buf[i]) ;
+    Serial.print(Send_buf[i],HEX);
+  }
+  Serial.println();
+}
