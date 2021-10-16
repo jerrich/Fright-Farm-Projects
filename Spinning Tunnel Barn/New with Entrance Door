@@ -1,0 +1,105 @@
+//Jeremy Rich updated on October 5, 2021
+
+const int fireTrip = 9;
+const int door = 10;
+const int tunnelTrip = 11;
+
+/// mp3 trial
+#include <SoftwareSerial.h>
+#define ARDUINO_RX 0
+#define ARDUINO_TX 1
+SoftwareSerial mySerial(ARDUINO_RX, ARDUINO_TX);
+static int8_t Send_buf[8] = {0} ;
+#define CMD_PLAY_WITHVOLUME 0X22
+#define STOP_PLAY 0X16
+#define CMD_SEL_DEV 0X09
+#define DEV_TF 0X02
+
+int lastFireTripState = HIGH;
+int lastTunnelTripState = HIGH;
+int fireTripState = HIGH;
+int tunnelTripState = HIGH;
+unsigned long lastFireDebounceTime = 0;
+unsigned long lastTunnelDebounceTime = 0;
+unsigned long debounceDelay = 20;
+unsigned long fireTripTime = 0;
+unsigned long timeDelay1 = 40000;
+unsigned long timeDelay2 = 10000;
+bool openDoor = false;
+bool doorState = false;
+
+void setup() {
+  pinMode(fireTrip, INPUT_PULLUP);
+  pinMode(door, OUTPUT);
+  pinMode(tunnelTrip, INPUT_PULLUP);
+ 
+  ///mp3 trial
+  mySerial.begin(9600);
+  delay(500);
+  sendCommand(CMD_SEL_DEV, DEV_TF);
+  delay(200);
+
+}
+ 
+void loop() {
+  if (!openDoor) {
+    int reading = digitalRead(fireTrip);
+    if (reading != lastFireTripState) {
+      lastFireDebounceTime = millis();
+    }
+    if ((millis() - lastFireDebounceTime) > debounceDelay) {
+      if (reading != fireTripState) {
+        fireTripState = reading;
+        if (fireTripState == LOW) {
+          openDoor = true;
+          fireTripTime = millis();
+        }
+      }
+    }
+    lastFireTripState = reading;
+  }
+
+  if (fireTripTime + timeDelay1 < millis() && openDoor && doorState == false) {
+    digitalWrite(door, HIGH);
+    doorState = true;
+  }
+ 
+  if (fireTripTime + timeDelay1 + timeDelay2 < millis() && openDoor) {
+    int reading = digitalRead(tunnelTrip);
+    if (reading != lastTunnelTripState) {
+      lastTunnelDebounceTime = millis();
+    }
+    if ((millis() - lastTunnelDebounceTime) > debounceDelay) {
+      if (reading != tunnelTripState) {
+        tunnelTripState = reading;
+        if (tunnelTripState == LOW) {
+          delay(4000);
+          sendCommand(CMD_PLAY_WITHVOLUME, 0X1E01);
+          digitalWrite(door, LOW);
+          doorState = false;
+          openDoor = false;
+        }
+      }
+    }
+    lastTunnelTripState = reading;
+  }
+}
+
+/// mp3 trial
+void sendCommand(int8_t command, int16_t dat) {
+  delay(20);
+  Send_buf[0] = 0x7e;
+  Send_buf[1] = 0xff;
+  Send_buf[2] = 0x06;
+  Send_buf[3] = command;
+  Send_buf[4] = 0x00;
+  Send_buf[5] = (int8_t)(dat >> 8);
+  Send_buf[6] = (int8_t)(dat);
+  Send_buf[7] = 0xef;
+ 
+  for(uint8_t i=0; i<8; i++) {
+    mySerial.write(Send_buf[i]) ;
+    Serial.print(Send_buf[i],HEX);
+  }
+  Serial.println();
+}
