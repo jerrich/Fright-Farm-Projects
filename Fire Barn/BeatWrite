@@ -63,7 +63,7 @@ float kickSize, snareSize, hatSize, onsetSize;
 int lastButtonState = Arduino.HIGH;
 int buttonState = Arduino.HIGH;
 long lastDebounceTime = 0;
-long debounceDelay = 50;
+long debounceDelay = 20;
 
 void setup() {
   size(512, 200, P3D);
