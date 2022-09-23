@@ -1,8 +1,8 @@
 # Fright-Farm-Projects
-I helped write the code for several projects for Fright Farm 2021 (a haunted attraction).<br />
+I helped write the code for several projects for Fright Farm (a haunted attraction) in 2021.<br />
 <br />
 <br />
-hayride attractions:<br />
+hayride:<br />
 <br />
 (1) Fire Barn - a barn with four stations on either side that shoot fire into the air (with propane) at certain times corresponding to the music<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-for Processing<br />
@@ -21,6 +21,12 @@ hayride attractions:<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-for Arduino<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-senses the wagon (with a debounce), plays the song, and sets off four floodlights (with two controlled per pin) timed to the music<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-timing is specialized to the particular song used<br />
+<br />
+(4) Traffic Light - a red/green traffic light at the beginning of the hayride to direct the drivers when to depart<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-for Arduino<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-provides an interface (with a button and a screen) to set the planned time span between wagon departures<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-uses a 2d matrix to track what each digit looks like and uses multiplexing to display digits to different parts of the screen<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-order: sets light green -> senses a wagon (with a debounce) -> sets light red for specified time span<br />
 <br />
 <br />
 festival area:<br />
