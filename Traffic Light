@@ -1,0 +1,183 @@
+//updated by Jeremy Rich on October 20, 2021
+/*
+  Showing number 0-9 on a Common Anode 7-segment LED display
+  Displays the numbers 0-9 on the display, with one second inbetween.
+    A
+   ---
+F |   | B
+  | G |
+   ---
+E |   | C
+  |   |
+   ---
+    D
+  This example code is in the public domain.
+ */
+ 
+// Pin 2-8 is connected to the 7 segments of the display.
+
+int pinA = 2;
+int pinB = 3;
+int pinC = 4;
+int pinD = 5;
+int pinE = 6;
+int pinF = 7;
+int pinG = 8;
+int D1 = 9;
+int D2 = 10;
+int D3 = 11;
+int D4 = A4;
+int button = 12;
+int trip = 13;
+int light = A0;
+
+unsigned long timer = 15;
+int digit1 = timer / 600;
+int digit2 = (timer % 600) / 60;
+int digit3 = (timer % 60) / 10;
+int digit4 = timer % 10;
+
+int nextTime(int num) {
+  if(num == 15) {
+    return 150;
+  }
+  if(num == 900) {
+    return 15;
+  }
+  if(num < 300) {
+    return num + 15;
+  }
+  if(num < 600) {
+    return num + 30;
+  }
+  return num + 60;
+}
+
+int index[10][7] = { {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, LOW}, //0
+                     {LOW, HIGH, HIGH, LOW, LOW, LOW, LOW}, //1
+                     {HIGH, HIGH, LOW, HIGH, HIGH, LOW, HIGH}, //2
+                     {HIGH, HIGH, HIGH, HIGH, LOW, LOW, HIGH}, //3
+                     {LOW, HIGH, HIGH, LOW, LOW, HIGH, HIGH}, //4
+                     {HIGH, LOW, HIGH, HIGH, LOW, HIGH, HIGH}, //5
+                     {HIGH, LOW, HIGH, HIGH, HIGH, HIGH, HIGH}, //6
+                     {HIGH, HIGH, HIGH, LOW, LOW, LOW, LOW}, //7
+                     {HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH}, //8
+                     {HIGH, HIGH, HIGH, LOW, LOW, HIGH, HIGH} }; //9
+
+void displayDigit(int digit) {
+  digitalWrite(pinA, index[digit][0]);
+  digitalWrite(pinB, index[digit][1]);
+  digitalWrite(pinC, index[digit][2]);
+  digitalWrite(pinD, index[digit][3]);
+  digitalWrite(pinE, index[digit][4]);
+  digitalWrite(pinF, index[digit][5]);
+  digitalWrite(pinG, index[digit][6]);
+}
+
+int lastButtonState = HIGH;
+int buttonState = HIGH;
+int lastTripState = LOW;
+int tripState = LOW;
+unsigned long lastButtonDebounceTime = 0;
+unsigned long lastTripDebounceTime = 0;
+unsigned long debounceDelay = 20;
+unsigned long tripTime = 0;
+bool lightGreen = true;
+
+void setup() {
+  //Serial.begin(9600);
+  pinMode(pinA, OUTPUT);
+  pinMode(pinB, OUTPUT);
+  pinMode(pinC, OUTPUT);
+  pinMode(pinD, OUTPUT);
+  pinMode(pinE, OUTPUT);
+  pinMode(pinF, OUTPUT);
+  pinMode(pinG, OUTPUT);
+  pinMode(D1, OUTPUT);
+  pinMode(D2, OUTPUT);
+  pinMode(D3, OUTPUT);
+  pinMode(D4, OUTPUT);
+  pinMode(button, INPUT_PULLUP);
+  pinMode(light, OUTPUT);
+  pinMode(trip, INPUT_PULLUP);
+
+  digitalWrite(light, HIGH);
+}
+
+void loop() {
+  //Serial.println();
+  int reading = digitalRead(button);
+  if (reading != lastButtonState) {
+    lastButtonDebounceTime = millis();
+  }
+  if ((millis() - lastButtonDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+      if (buttonState == LOW) {
+        timer = nextTime(timer);
+        digit1 = timer / 600;
+        digit2 = (timer % 600) / 60;
+        digit3 = (timer % 60) / 10;
+        digit4 = timer % 10;
+        digitalWrite(light, HIGH);
+        lightGreen = true;
+      }
+    }
+  }
+  lastButtonState = reading;
+
+  if(lightGreen) {
+    int reading = digitalRead(trip);
+    if (reading != lastTripState) {
+      lastTripDebounceTime = millis();
+    }
+    if ((millis() - lastTripDebounceTime) > debounceDelay) {
+      if (reading != tripState) {
+        tripState = reading;
+        if (tripState == HIGH) {
+          digitalWrite(light, LOW);
+          lightGreen = false;
+          tripTime = millis();
+        }
+      }
+    }
+    lastTripState = reading;
+  }
+
+  if(tripTime + timer * 1000 < millis() && !lightGreen) {
+    digitalWrite(light, HIGH);
+    lightGreen = true;
+  }
+
+  digitalWrite(D1, LOW);
+  digitalWrite(D2, HIGH);
+  digitalWrite(D3, HIGH);
+  digitalWrite(D4, HIGH);
+  displayDigit(digit1);
+
+  delay(4);
+
+  digitalWrite(D1, HIGH);
+  digitalWrite(D2, LOW);
+  digitalWrite(D3, HIGH);
+  digitalWrite(D4, HIGH);
+  displayDigit(digit2);
+
+  delay(4);
+
+  digitalWrite(D1, HIGH);
+  digitalWrite(D2, HIGH);
+  digitalWrite(D3, LOW);
+  digitalWrite(D4, HIGH);
+  displayDigit(digit3);
+
+  delay(4);
+
+  digitalWrite(D1, HIGH);
+  digitalWrite(D2, HIGH);
+  digitalWrite(D3, HIGH);
+  digitalWrite(D4, LOW);
+  displayDigit(digit4);
+
+  delay(4);
+}
