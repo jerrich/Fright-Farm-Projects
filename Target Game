@@ -1,0 +1,437 @@
+//updated by Jeremy Rich on October 3, 2022
+
+
+//GPIO declarations
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+byte segmentClock = 6;
+byte segmentLatch = 5;
+byte segmentData = 7;
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+//3,8,9,11-15 sensors
+//31-38 light and power
+//31 --> 8   player 2
+//32 --> 14  player 2
+//33 --> 15  player 1
+//34 --> 3   player 1
+//35 --> 13  player 1
+//36 --> 12  player 1
+//37 --> 9   player 2
+//38 --> 11  player 2
+
+const int buttonPin = 2;
+
+const int leftTarget1Sensor = 15;
+const int leftTarget2Sensor = 3;
+const int leftTarget3Sensor = 13;
+const int leftTarget4Sensor = 12;
+const int rightTarget1Sensor = 8;
+const int rightTarget2Sensor = 14;
+const int rightTarget3Sensor = 9;
+const int rightTarget4Sensor = 11;
+const int leftTarget1Light = 33;
+const int leftTarget2Light = 34;
+const int leftTarget3Light = 35;
+const int leftTarget4Light = 36;
+const int rightTarget1Light = 31;
+const int rightTarget2Light = 32;
+const int rightTarget3Light = 37;
+const int rightTarget4Light = 38;
+
+unsigned long debounceDelay = 50;
+
+int lastGameStartButtonState = HIGH;
+int gameStartButtonState = HIGH;
+unsigned long lastGameStartDebounceTime = 0;
+
+int lastLeftTargetState = LOW;
+int leftTargetState = LOW;
+unsigned long lastLeftTargetDebounceTime = 0;
+int lastRightTargetState = LOW;
+int rightTargetState = LOW;
+unsigned long lastRightTargetDebounceTime = 0;
+
+int targetList[100];
+int leftPlayerScore = 0;
+int rightPlayerScore = 0;
+bool gameActive = false;
+unsigned long audioLength = 60000;
+unsigned long gameStartTime = 0;
+int afterShotDelay = 200;
+int startGameDelay = 15000;
+unsigned long leftAfterShotPauseTime = 0;
+unsigned long rightAfterShotPauseTime = 0;
+bool leftLightOn = false;
+bool rightLightOn = false;
+
+/// mp3 trial
+#include <SoftwareSerial.h>
+#define ARDUINO_RX 0
+#define ARDUINO_TX 18
+SoftwareSerial mySerial(ARDUINO_RX, ARDUINO_TX);
+static int8_t Send_buf[8] = {0} ;
+#define CMD_PLAY_WITHVOLUME 0X22
+#define STOP_PLAY 0X16
+#define CMD_SEL_DEV 0X09
+#define DEV_TF 0X02
+
+int dec_digits[10] = {222, 6, 186, 174, 102, 236, 252, 134, 254, 230};
+
+
+void setup()
+{
+  mySerial.begin(9600);
+  Serial.begin(9600);
+ 
+  pinMode(segmentClock, OUTPUT);
+  pinMode(segmentData, OUTPUT);
+  pinMode(segmentLatch, OUTPUT);
+
+  digitalWrite(segmentClock, LOW);
+  digitalWrite(segmentData, LOW);
+  digitalWrite(segmentLatch, LOW);
+
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  pinMode(leftTarget1Sensor, INPUT);
+  pinMode(leftTarget2Sensor, INPUT);
+  pinMode(leftTarget3Sensor, INPUT);
+  pinMode(leftTarget4Sensor, INPUT);
+  pinMode(rightTarget1Sensor, INPUT);
+  pinMode(rightTarget2Sensor, INPUT);
+  pinMode(rightTarget3Sensor, INPUT);
+  pinMode(rightTarget4Sensor, INPUT);
+  pinMode(leftTarget1Light, OUTPUT);
+  pinMode(leftTarget2Light, OUTPUT);
+  pinMode(leftTarget3Light, OUTPUT);
+  pinMode(leftTarget4Light, OUTPUT);
+  pinMode(rightTarget1Light, OUTPUT);
+  pinMode(rightTarget2Light, OUTPUT);
+  pinMode(rightTarget3Light, OUTPUT);
+  pinMode(rightTarget4Light, OUTPUT);
+
+  digitalWrite(leftTarget1Light, HIGH);
+  digitalWrite(leftTarget2Light, HIGH);
+  digitalWrite(leftTarget3Light, HIGH);
+  digitalWrite(leftTarget4Light, HIGH);
+  digitalWrite(rightTarget1Light, HIGH);
+  digitalWrite(rightTarget2Light, HIGH);
+  digitalWrite(rightTarget3Light, HIGH);
+  digitalWrite(rightTarget4Light, HIGH);
+
+  sendCommand(CMD_SEL_DEV, DEV_TF);
+}
+
+
+void loop()
+{
+  if (!gameActive) {
+    int reading = digitalRead(buttonPin);
+    if (reading != lastGameStartButtonState) {
+      lastGameStartDebounceTime = millis();
+    }
+    if ((millis() - lastGameStartDebounceTime) > debounceDelay) {
+      if (reading != gameStartButtonState) {
+        gameStartButtonState = reading;
+        if (gameStartButtonState == LOW) {
+          for (int i = 0; i < 100; i++) {
+            targetList[i] = rand() % 4;
+          }
+          leftPlayerScore = 0;
+          rightPlayerScore = 0;
+          showNumber(0, 0);
+          showNumber(0, 0);
+
+          sendCommand(CMD_PLAY_WITHVOLUME, 0X1E01);
+          gameActive = true;
+          gameStartTime = millis();
+          delay(startGameDelay);
+          if (targetList[0] == 0) {
+            digitalWrite(leftTarget1Light, LOW);
+            digitalWrite(rightTarget1Light, LOW);
+          }
+          else if (targetList[0] == 1) {
+            digitalWrite(leftTarget2Light, LOW);
+            digitalWrite(rightTarget2Light, LOW);
+          }
+          else if (targetList[0] == 2) {
+            digitalWrite(leftTarget3Light, LOW);
+            digitalWrite(rightTarget3Light, LOW);
+          }
+          else if (targetList[0] == 3) {
+            digitalWrite(leftTarget4Light, LOW);
+            digitalWrite(rightTarget4Light, LOW);
+          }
+          leftLightOn = true;
+          rightLightOn = true;
+        }
+      }
+    }
+    lastGameStartButtonState = reading;
+  }
+
+  if (gameActive) {
+    if (millis() - leftAfterShotPauseTime > afterShotDelay) {
+      if (!leftLightOn) {
+        if (targetList[leftPlayerScore] == 0) {
+          digitalWrite(leftTarget1Light, LOW);
+        }
+        else if (targetList[leftPlayerScore] == 1) {
+          digitalWrite(leftTarget2Light, LOW);
+        }
+        else if (targetList[leftPlayerScore] == 2) {
+          digitalWrite(leftTarget3Light, LOW);
+        }
+        else if (targetList[leftPlayerScore] == 3) {
+          digitalWrite(leftTarget4Light, LOW);
+        }
+        leftLightOn = true;
+        lastLeftTargetState = LOW;
+        leftTargetState = LOW;
+      }
+
+      if (targetList[leftPlayerScore] == 0) {
+        int reading = digitalRead(leftTarget1Sensor);
+        if (reading != lastLeftTargetState) {
+          lastLeftTargetDebounceTime = millis();
+        }
+        if ((millis() - lastLeftTargetDebounceTime) > debounceDelay) {
+          if (reading != leftTargetState) {
+            leftTargetState = reading;
+            if (leftTargetState == HIGH) {
+              digitalWrite(leftTarget1Light, HIGH);
+              leftLightOn = false;
+              leftPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              leftAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastLeftTargetState = reading;
+      }
+      else if (targetList[leftPlayerScore] == 1) {
+        int reading = digitalRead(leftTarget2Sensor);
+        if (reading != lastLeftTargetState) {
+          lastLeftTargetDebounceTime = millis();
+        }
+        if ((millis() - lastLeftTargetDebounceTime) > debounceDelay) {
+          if (reading != leftTargetState) {
+            leftTargetState = reading;
+            if (leftTargetState == HIGH) {
+              digitalWrite(leftTarget2Light, HIGH);
+              leftLightOn = false;
+              leftPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              leftAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastLeftTargetState = reading;
+      }
+      else if (targetList[leftPlayerScore] == 2) {
+        int reading = digitalRead(leftTarget3Sensor);
+        if (reading != lastLeftTargetState) {
+          lastLeftTargetDebounceTime = millis();
+        }
+        if ((millis() - lastLeftTargetDebounceTime) > debounceDelay) {
+          if (reading != leftTargetState) {
+            leftTargetState = reading;
+            if (leftTargetState == HIGH) {
+              digitalWrite(leftTarget3Light, HIGH);
+              leftLightOn = false;
+              leftPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              leftAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastLeftTargetState = reading;
+      }
+      else if (targetList[leftPlayerScore] == 3) {
+        int reading = digitalRead(leftTarget4Sensor);
+        if (reading != lastLeftTargetState) {
+          lastLeftTargetDebounceTime = millis();
+        }
+        if ((millis() - lastLeftTargetDebounceTime) > debounceDelay) {
+          if (reading != leftTargetState) {
+            leftTargetState = reading;
+            if (leftTargetState == HIGH) {
+              digitalWrite(leftTarget4Light, HIGH);
+              leftLightOn = false;
+              leftPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              leftAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastLeftTargetState = reading;
+      }
+    }
+    if (millis() - rightAfterShotPauseTime > afterShotDelay) {
+      if (!rightLightOn) {
+        if (targetList[rightPlayerScore] == 0) {
+          digitalWrite(rightTarget1Light, LOW);
+        }
+        else if (targetList[rightPlayerScore] == 1) {
+          digitalWrite(rightTarget2Light, LOW);
+        }
+        else if (targetList[rightPlayerScore] == 2) {
+          digitalWrite(rightTarget3Light, LOW);
+        }
+        else if (targetList[rightPlayerScore] == 3) {
+          digitalWrite(rightTarget4Light, LOW);
+        }
+        rightLightOn = true;
+        lastRightTargetState = LOW;
+        rightTargetState = LOW;
+      }
+      if (targetList[rightPlayerScore] == 0) {
+        int reading = digitalRead(rightTarget1Sensor);
+        if (reading != lastRightTargetState) {
+          lastRightTargetDebounceTime = millis();
+        }
+        if ((millis() - lastRightTargetDebounceTime) > debounceDelay) {
+          if (reading != rightTargetState) {
+            rightTargetState = reading;
+            if (rightTargetState == HIGH) {
+              digitalWrite(rightTarget1Light, HIGH);
+              rightLightOn = false;
+              rightPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              rightAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastRightTargetState = reading;
+      }
+      else if (targetList[rightPlayerScore] == 1) {
+        int reading = digitalRead(rightTarget2Sensor);
+        if (reading != lastRightTargetState) {
+          lastRightTargetDebounceTime = millis();
+        }
+        if ((millis() - lastRightTargetDebounceTime) > debounceDelay) {
+          if (reading != rightTargetState) {
+            rightTargetState = reading;
+            if (rightTargetState == HIGH) {
+              digitalWrite(rightTarget2Light, HIGH);
+              rightLightOn = false;
+              rightPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              rightAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastRightTargetState = reading;
+      }
+      else if (targetList[rightPlayerScore] == 2) {
+        int reading = digitalRead(rightTarget3Sensor);
+        if (reading != lastRightTargetState) {
+          lastRightTargetDebounceTime = millis();
+        }
+        if ((millis() - lastRightTargetDebounceTime) > debounceDelay) {
+          if (reading != rightTargetState) {
+            rightTargetState = reading;
+            if (rightTargetState == HIGH) {
+              digitalWrite(rightTarget3Light, HIGH);
+              rightLightOn = false;
+              rightPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              rightAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastRightTargetState = reading;
+      }
+      else if (targetList[rightPlayerScore] == 3) {
+        int reading = digitalRead(rightTarget4Sensor);
+        if (reading != lastRightTargetState) {
+          lastRightTargetDebounceTime = millis();
+        }
+        if ((millis() - lastRightTargetDebounceTime) > debounceDelay) {
+          if (reading != rightTargetState) {
+            rightTargetState = reading;
+            if (rightTargetState == HIGH) {
+              digitalWrite(rightTarget4Light, HIGH);
+              rightLightOn = false;
+              rightPlayerScore += 1;
+              showNumber(leftPlayerScore, rightPlayerScore);
+              rightAfterShotPauseTime = millis();
+            }
+          }
+        }
+        lastRightTargetState = reading;
+      }
+    }
+
+    if (millis() - gameStartTime > audioLength) {
+      Serial.println("game over");
+      digitalWrite(leftTarget1Light, HIGH);
+      digitalWrite(leftTarget2Light, HIGH);
+      digitalWrite(leftTarget3Light, HIGH);
+      digitalWrite(leftTarget4Light, HIGH);
+      digitalWrite(rightTarget1Light, HIGH);
+      digitalWrite(rightTarget2Light, HIGH);
+      digitalWrite(rightTarget3Light, HIGH);
+      digitalWrite(rightTarget4Light, HIGH);
+     
+      if (leftPlayerScore > rightPlayerScore) {
+        sendCommand(CMD_PLAY_WITHVOLUME, 0X1E02);
+      }
+      else if (rightPlayerScore > leftPlayerScore) {
+        sendCommand(CMD_PLAY_WITHVOLUME, 0X1E03);
+      }
+      else if (leftPlayerScore == rightPlayerScore) {
+        sendCommand(CMD_PLAY_WITHVOLUME, 0X1E04);
+      }
+     
+      gameActive = false;
+      lastLeftTargetState = LOW;
+      leftTargetState = LOW;
+      lastRightTargetState = LOW;
+      rightTargetState = LOW;
+    }
+  }
+}
+
+
+//Takes a number and displays 2 numbers. Displays absolute value (no negatives)
+void showNumber(float leftValue, float rightValue)
+{
+  int leftNumber = abs(leftValue); //Remove negative signs and any decimals
+  int rightNumber = abs(rightValue); //Remove negative signs and any decimals
+
+  postNumber(rightNumber % 10, (rightNumber / 10) % 10, leftNumber % 10, (leftNumber / 10) % 10);
+
+  digitalWrite(segmentLatch, LOW);
+  digitalWrite(segmentLatch, HIGH); //Register moves storage register on the rising edge of RCK
+}
+
+
+//Given a number, or '-', shifts it out to the display
+void postNumber(byte number1, byte number2, byte number3, byte number4)
+{
+  shiftOut(segmentData, segmentClock, LSBFIRST, dec_digits[number1]);
+  shiftOut(segmentData, segmentClock, LSBFIRST, dec_digits[number2]);
+  shiftOut(segmentData, segmentClock, LSBFIRST, dec_digits[number3]);
+  shiftOut(segmentData, segmentClock, LSBFIRST, dec_digits[number4]);
+}
+
+
+/// mp3 trial
+void sendCommand(int8_t command, int16_t dat) {
+  delay(20);
+  Send_buf[0] = 0x7e;
+  Send_buf[1] = 0xff;
+  Send_buf[2] = 0x06;
+  Send_buf[3] = command;
+  Send_buf[4] = 0x00;
+  Send_buf[5] = (int8_t)(dat >> 8);
+  Send_buf[6] = (int8_t)(dat);
+  Send_buf[7] = 0xef;
+ 
+  for(uint8_t i=0; i<8; i++) {
+    mySerial.write(Send_buf[i]) ;
+    Serial.print(Send_buf[i],HEX);
+  }
+  Serial.println();
+}
