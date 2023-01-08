@@ -1,8 +1,11 @@
 # Fright-Farm-Projects
-I helped write the code for several projects for Fright Farm (a haunted attraction) in 2021.<br />
+I helped write the code for several projects for Fright Farm (a haunted attraction) in 2021 and 2022.<br />
 <br />
 <br />
-hayride:<br />
+
+## 2021
+
+### hayride
 <br />
 (1) Fire Barn - a barn with four stations on either side that shoot fire into the air (with propane) at certain times corresponding to the music<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-for Processing<br />
@@ -29,9 +32,33 @@ hayride:<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-order: sets light green -> senses a wagon (with a debounce) -> sets light red for specified time span<br />
 <br />
 <br />
-festival area:<br />
+
+### festival area
 <br />
 Festival Ticket Sign - a large counter board to let customers know when to get on the hayride<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-for Arduino<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-receives input from a remote control and increments the sign (up or down, between 00 and 99) via writing to the LEDs on the board<br />
 	&nbsp;&nbsp;&nbsp;&nbsp;-uses a 2d matrix to track what each digit looks like<br />
+<br />
+<br />
+
+## 2022
+
+### haunted house
+<br />
+(1) Spark Fuse Box - a fuse box with a lever that sparks and pops any time a customer pulls or pushes the lever<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-for Arduino<br />
+<br />
+(2) Three Sound Button - a button for actors that plays one of three sounds, rotating between them<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-for Arduino<br />
+<br />
+<br />
+
+### festival area
+<br />
+Target Game - a carnival game in which two players compete against each other to shoot lit-up targets with pellet guns<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-for Arduino<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-each player has four designated targets that can light up; upon shooting the lit target, the player gains a point and a new target (possibly the same one) lights up<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-writes scores to a scoreboard by shifting numbers out to a series of seven segment displays<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-plays music during the game, announces the winner at the end, and waits for a restart from the employee's button<br />
+	&nbsp;&nbsp;&nbsp;&nbsp;-a new random sequence of planned target lighting is assigned for each game; same for each player
